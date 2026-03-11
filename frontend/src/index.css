@@ -1,0 +1,53 @@
+@import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply antialiased text-slate-900 dark:text-white transition-colors duration-300;
+    font-family: 'Nunito', sans-serif; /* Applied globally */
+    background-color: #FAFAFA;
+  }
+
+  .dark body {
+    background-color: #0F172A;
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-slate-200 dark:bg-slate-700 rounded-full;
+}
+
+/* Lunari Gradients */
+.bg-lunari-gradient {
+  background: linear-gradient(135deg, #FF4D67 0%, #FF8095 100%);
+}
+
+.text-lunari-gradient {
+  background: linear-gradient(135deg, #FF4D67 0%, #FF8095 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Hide scrollbar utilities */
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+.no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+.font-mplus {
+  font-family: "M PLUS Rounded 1c", sans-serif;
+  font-weight: 400;
+}
