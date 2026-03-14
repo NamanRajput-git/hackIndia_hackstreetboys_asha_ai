@@ -7,9 +7,8 @@ from datetime import datetime
 from typing import Optional
 from sqlalchemy import String, Text, Boolean, DateTime, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy.dialects.postgresql import UUID
-
 from app.core.database import Base
+from app.core.types import GUID
 
 
 class ChatLog(Base):
@@ -21,11 +20,11 @@ class ChatLog(Base):
 
     __tablename__ = "ai_chat_history"
     
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
     
     # User information
     user_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        UUID(as_uuid=True), 
+        GUID, 
         ForeignKey("users.id", ondelete="SET NULL"), 
         nullable=True
     )

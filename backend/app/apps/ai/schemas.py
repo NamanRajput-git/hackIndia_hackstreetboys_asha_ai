@@ -3,7 +3,7 @@ from pydantic import BaseModel
 
 
 class PromptRequest(BaseModel):
-    """Request schema for Gemini AI"""
+    """Request schema for Mistral AI"""
     text: str
 
 

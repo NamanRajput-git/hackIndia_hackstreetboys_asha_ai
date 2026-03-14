@@ -6,6 +6,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID
 
 from app.core.database import Base
+from app.core.types import GUID
 
 if TYPE_CHECKING:
     from app.apps.schemes.models import Scheme
@@ -17,19 +18,19 @@ class Enrollment(Base):
     """Enrollments - scheme enrollments for beneficiaries"""
     __tablename__ = "scheme_beneficiaries"
     
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
     scheme_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), 
+        GUID, 
         ForeignKey("schemes.id", ondelete="CASCADE"), 
         nullable=False
     )
     beneficiary_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), 
+        GUID, 
         ForeignKey("beneficiary_profiles.id", ondelete="CASCADE"), 
         nullable=False
     )
     enrolled_by: Mapped[Optional[uuid.UUID]] = mapped_column(
-        UUID(as_uuid=True), 
+        GUID, 
         ForeignKey("users.id"), 
         nullable=True
     )

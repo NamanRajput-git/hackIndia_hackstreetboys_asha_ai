@@ -1,7 +1,7 @@
-import httpx
 import json
 import re
 from typing import Optional, List, Dict, Any
+from mistralai.client import Mistral
 from app.core.config import get_settings
 from app.apps.ai.schemas import (
     PromptRequest,
@@ -67,37 +67,33 @@ def detect_category(intent: str) -> str:
     return category_map.get(intent, 'general')
 
 
-class GeminiService:
-    """Service for interacting with hosted Gemini API"""
+class MistralService:
+    """Service for interacting with Mistral AI API via official SDK"""
     
     def __init__(self):
-        self.api_url = settings.GEMINI_API_URL
+        self.client = Mistral(api_key=settings.MISTRAL_API_KEY)
+        self.model = settings.MISTRAL_MODEL
     
     async def generate(self, prompt: str) -> AIResponse:
-        """Call the Gemini API to generate a response"""
+        """Call the Mistral API to generate a response"""
         try:
-            async with httpx.AsyncClient(timeout=30.0) as client:
-                response = await client.post(
-                    self.api_url,
-                    json={"text": prompt}
-                )
-                response.raise_for_status()
-                data = response.json()
-                return AIResponse(
-                    response=data.get("response", data.get("text", str(data))),
-                    success=True
-                )
-        except httpx.HTTPError as e:
+            response = self.client.chat.complete(
+                model=self.model,
+                messages=[{"role": "user", "content": prompt}]
+            )
+            text = response.choices[0].message.content if response.choices else ""
             return AIResponse(
-                response="",
-                success=False,
-                error=f"API Error: {str(e)}"
+                response=text,
+                success=True
             )
         except Exception as e:
+            print(f"❌ Mistral API Error: {type(e).__name__}: {str(e)}")
+            import traceback
+            traceback.print_exc()
             return AIResponse(
                 response="",
                 success=False,
-                error=f"Unexpected error: {str(e)}"
+                error=f"Mistral API error: {str(e)}"
             )
     
     async def chat_with_asha_didi(
@@ -332,11 +328,13 @@ Please respond in English:"""
         
         if response.success and response.response:
             return response.response
+            
+        print(f"⚠️ Health guidance generation failed: {response.error}")
         
         # Fallback messages
         if language == "hi":
-            return "माफ़ करें, अभी जवाब देने में समस्या है। कृपया अपनी ASHA दीदी से बात करें।"
-        return "Sorry, there was an issue getting a response. Please talk to your ASHA worker."
+            return f"माफ़ करें, अभी जवाब देने में समस्या है। त्रुटि: {response.error}"
+        return f"Sorry, there was an issue getting a response. Error: {response.error}"
     
     async def extract_visit_data(self, transcription: str) -> Dict[str, Any]:
         """Extract structured visit data from ASHA worker's voice transcription"""
@@ -544,4 +542,4 @@ Return a JSON object with:
 
 
 # Singleton instance
-gemini_service = GeminiService()
+mistral_service = MistralService()

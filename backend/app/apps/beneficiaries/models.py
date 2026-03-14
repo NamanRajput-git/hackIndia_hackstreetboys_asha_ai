@@ -6,6 +6,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID, ARRAY
 
 from app.core.database import Base
+from app.core.types import GUID, StringArray
 
 if TYPE_CHECKING:
     from app.apps.users.models import User
@@ -19,8 +20,8 @@ class BeneficiaryProfile(Base):
     """Beneficiary profile - contains health and personal data for beneficiaries"""
     __tablename__ = "beneficiary_profiles"
     
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(GUID, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     user_type: Mapped[str] = mapped_column(
         Enum('girl', 'pregnant', 'mother', name='user_type'), 
@@ -48,7 +49,7 @@ class BeneficiaryProfile(Base):
     )
     address: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     gps_coords: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)  # { lat, lng }
-    linked_asha_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    linked_asha_id: Mapped[Optional[uuid.UUID]] = mapped_column(GUID, ForeignKey("users.id"), nullable=True)
     next_checkup_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
     medical_history: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     current_medications: Mapped[Optional[str]] = mapped_column(Text, nullable=True)

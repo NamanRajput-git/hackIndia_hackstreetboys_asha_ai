@@ -45,13 +45,15 @@ export default function Login() {
         });
 
         login(user as UserType);
-        await fetchInitialData();
-
         addToast(t('common.success'), 'success');
 
+        // Navigate immediately — don't block on data fetch
         if (user.role === 'beneficiary') navigate('/beneficiary');
         else if (user.role === 'asha_worker') navigate('/asha');
         else navigate('/partner');
+
+        // Fetch data in background (non-blocking)
+        fetchInitialData();
 
       } else {
         // Sign Up
@@ -75,13 +77,15 @@ export default function Login() {
           await ensureBeneficiaryProfile(user.id, formData.name);
         }
 
-        await fetchInitialData();
-
         addToast(t('common.success'), 'success');
 
+        // Navigate immediately — don't block on data fetch
         if (role === 'beneficiary') navigate('/beneficiary');
         else if (role === 'asha_worker') navigate('/asha');
         else navigate('/partner');
+
+        // Fetch data in background (non-blocking)
+        fetchInitialData();
       }
     } catch (error: any) {
       console.error('Auth Error:', error);

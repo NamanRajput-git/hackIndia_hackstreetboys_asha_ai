@@ -6,6 +6,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID, ARRAY
 
 from app.core.database import Base
+from app.core.types import GUID, StringArray
 
 if TYPE_CHECKING:
     from app.apps.users.models import User
@@ -15,9 +16,9 @@ class DailyLog(Base):
     """Daily logs - self-reported daily health data for period/mood tracking"""
     __tablename__ = "daily_logs"
     
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), 
+        GUID, 
         ForeignKey("users.id", ondelete="CASCADE"), 
         nullable=False
     )
@@ -26,7 +27,7 @@ class DailyLog(Base):
         Enum('Happy', 'Neutral', 'Sad', 'Tired', 'Anxious', 'Pain', name='mood_type'),
         nullable=True
     )
-    symptoms: Mapped[Optional[List[str]]] = mapped_column(ARRAY(String), nullable=True)
+    symptoms: Mapped[Optional[List[str]]] = mapped_column(StringArray, nullable=True)
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     flow: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)  # 'Light', 'Medium', 'Heavy'
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)

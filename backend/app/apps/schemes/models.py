@@ -6,6 +6,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID, ARRAY
 
 from app.core.database import Base
+from app.core.types import GUID, StringArray
 
 if TYPE_CHECKING:
     from app.apps.users.models import User
@@ -16,7 +17,7 @@ class Scheme(Base):
     """Schemes - government and NGO health/welfare schemes"""
     __tablename__ = "schemes"
     
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
     scheme_name: Mapped[str] = mapped_column(String(255), nullable=False)
     provider: Mapped[str] = mapped_column(
         Enum('Govt', 'NGO', name='scheme_provider'), 
@@ -28,8 +29,8 @@ class Scheme(Base):
     )
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     hero_image: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    benefits: Mapped[Optional[List[str]]] = mapped_column(ARRAY(String), nullable=True)
-    eligibility_criteria: Mapped[Optional[List[str]]] = mapped_column(ARRAY(String), nullable=True)
+    benefits: Mapped[Optional[List[str]]] = mapped_column(StringArray, nullable=True)
+    eligibility_criteria: Mapped[Optional[List[str]]] = mapped_column(StringArray, nullable=True)
     target_audience: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)  # { pregnancyStage, economicStatus, userTypes }
     status: Mapped[str] = mapped_column(
         Enum('active', 'draft', 'closed', name='scheme_status'), 
@@ -41,7 +42,7 @@ class Scheme(Base):
     end_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
     microsite_config: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)  # Custom microsite configuration
     created_by: Mapped[Optional[uuid.UUID]] = mapped_column(
-        UUID(as_uuid=True), 
+        GUID, 
         ForeignKey("users.id"), 
         nullable=True
     )

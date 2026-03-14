@@ -6,6 +6,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID, ARRAY
 
 from app.core.database import Base
+from app.core.types import GUID, StringArray
 
 if TYPE_CHECKING:
     from app.apps.beneficiaries.models import BeneficiaryProfile
@@ -15,9 +16,9 @@ class Child(Base):
     """Children - children of beneficiaries for vaccination tracking etc."""
     __tablename__ = "children"
     
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
     beneficiary_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), 
+        GUID, 
         ForeignKey("beneficiary_profiles.id", ondelete="CASCADE"), 
         nullable=False
     )
@@ -28,7 +29,7 @@ class Child(Base):
         nullable=True
     )
     blood_group: Mapped[Optional[str]] = mapped_column(String(10), nullable=True)
-    vaccinations: Mapped[Optional[List[str]]] = mapped_column(ARRAY(String), nullable=True)
+    vaccinations: Mapped[Optional[List[str]]] = mapped_column(StringArray, nullable=True)
     
     # Relationships
     beneficiary: Mapped["BeneficiaryProfile"] = relationship("BeneficiaryProfile", back_populates="children")

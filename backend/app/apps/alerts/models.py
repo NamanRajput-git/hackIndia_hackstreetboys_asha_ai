@@ -6,6 +6,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID
 
 from app.core.database import Base
+from app.core.types import GUID
 
 if TYPE_CHECKING:
     from app.apps.beneficiaries.models import BeneficiaryProfile
@@ -16,9 +17,9 @@ class Alert(Base):
     """Alerts - SOS and health risk alerts"""
     __tablename__ = "alerts"
     
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
     beneficiary_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), 
+        GUID, 
         ForeignKey("beneficiary_profiles.id", ondelete="CASCADE"), 
         nullable=False
     )
@@ -36,12 +37,12 @@ class Alert(Base):
     )
     reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     triggered_by: Mapped[Optional[uuid.UUID]] = mapped_column(
-        UUID(as_uuid=True), 
+        GUID, 
         ForeignKey("users.id"), 
         nullable=True
     )
     resolved_by: Mapped[Optional[uuid.UUID]] = mapped_column(
-        UUID(as_uuid=True), 
+        GUID, 
         ForeignKey("users.id"), 
         nullable=True
     )

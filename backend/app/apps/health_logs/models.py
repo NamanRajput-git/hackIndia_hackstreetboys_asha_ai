@@ -6,6 +6,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID, ARRAY
 
 from app.core.database import Base
+from app.core.types import GUID, StringArray
 
 if TYPE_CHECKING:
     from app.apps.beneficiaries.models import BeneficiaryProfile
@@ -16,14 +17,14 @@ class HealthLog(Base):
     """Health logs - clinical visits and health data recorded by ASHA workers or self-reported"""
     __tablename__ = "health_logs"
     
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
     beneficiary_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), 
+        GUID, 
         ForeignKey("beneficiary_profiles.id", ondelete="CASCADE"), 
         nullable=False
     )
     recorded_by: Mapped[Optional[uuid.UUID]] = mapped_column(
-        UUID(as_uuid=True), 
+        GUID, 
         ForeignKey("users.id"), 
         nullable=True
     )
@@ -31,7 +32,7 @@ class HealthLog(Base):
     vitals: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)  # { bpSystolic, bpDiastolic }
     bp_systolic: Mapped[Optional[int]] = mapped_column(nullable=True)
     bp_diastolic: Mapped[Optional[int]] = mapped_column(nullable=True)
-    symptoms: Mapped[Optional[List[str]]] = mapped_column(ARRAY(String), nullable=True)
+    symptoms: Mapped[Optional[List[str]]] = mapped_column(StringArray, nullable=True)
     mood: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     voice_note_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     ai_summary: Mapped[Optional[str]] = mapped_column(Text, nullable=True)

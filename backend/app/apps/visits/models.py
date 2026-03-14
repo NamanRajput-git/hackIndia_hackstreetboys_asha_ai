@@ -7,6 +7,7 @@ from sqlalchemy.dialects.postgresql import UUID
 import enum
 
 from app.core.database import Base
+from app.core.types import GUID
 
 if TYPE_CHECKING:
     from app.apps.beneficiaries.models import BeneficiaryProfile
@@ -33,16 +34,16 @@ class Visit(Base):
     """Scheduled visits by ASHA workers to beneficiaries"""
     __tablename__ = "visits"
     
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
     
     beneficiary_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), 
+        GUID, 
         ForeignKey("beneficiary_profiles.id", ondelete="CASCADE"), 
         nullable=False
     )
     
     asha_worker_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), 
+        GUID, 
         ForeignKey("users.id", ondelete="CASCADE"), 
         nullable=False
     )
@@ -73,7 +74,7 @@ class Visit(Base):
     # Completion details
     completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     health_log_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        UUID(as_uuid=True), 
+        GUID, 
         ForeignKey("health_logs.id", ondelete="SET NULL"), 
         nullable=True
     )  # Link to health log created during visit

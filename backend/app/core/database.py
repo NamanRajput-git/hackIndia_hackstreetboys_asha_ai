@@ -1,54 +1,39 @@
+import ssl
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase
 from app.core.config import get_settings
-import ssl
 
 settings = get_settings()
 
+_is_pg = "postgresql" in settings.DATABASE_URL
 
-def get_async_database_url():
-    """
-    Prepare the database URL for asyncpg.
-    Removes sslmode parameter as asyncpg handles SSL differently.
-    """
+
+def _get_connect_args() -> dict:
+    """Get connection args (SSL context for Neon DB, empty otherwise)."""
+    if not _is_pg:
+        return {}
     url = settings.DATABASE_URL
-    
-    # Remove sslmode from URL - we'll handle SSL via connect_args
-    if '?' in url:
-        base, params = url.split('?', 1)
-        # Filter out sslmode parameter
-        params_list = [p for p in params.split('&') if not p.startswith('sslmode=') and not p.startswith('ssl=')]
-        if params_list:
-            url = f"{base}?{'&'.join(params_list)}"
-        else:
-            url = base
-    
-    return url
+    if 'neon.tech' in url or 'sslmode=require' in url:
+        ctx = ssl.create_default_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+        return {"ssl": ctx}
+    return {}
 
 
-def get_ssl_context():
-    """Create SSL context for Neon DB connection"""
-    # Check if we need SSL (Neon DB requires it)
-    if 'neon.tech' in settings.DATABASE_URL or 'sslmode=require' in settings.DATABASE_URL:
-        ssl_context = ssl.create_default_context()
-        ssl_context.check_hostname = False
-        ssl_context.verify_mode = ssl.CERT_NONE  # For development; use CERT_REQUIRED in production
-        return ssl_context
-    return None
-
-
-# Get SSL context if needed
-ssl_context = get_ssl_context()
-
-# Create async engine for Neon DB
-engine = create_async_engine(
-    get_async_database_url(),
+# Create async engine — works with both SQLite and PostgreSQL
+_engine_kwargs = dict(
     echo=settings.SQL_ECHO,
-    pool_pre_ping=True,
-    pool_size=5,
-    max_overflow=10,
-    connect_args={"ssl": ssl_context} if ssl_context else {}
 )
+if _is_pg:
+    _engine_kwargs.update(
+        pool_pre_ping=True,
+        pool_size=5,
+        max_overflow=10,
+        connect_args=_get_connect_args(),
+    )
+
+engine = create_async_engine(settings.DATABASE_URL, **_engine_kwargs)
 
 # Session factory
 async_session_maker = async_sessionmaker(
@@ -75,6 +60,6 @@ async def get_db() -> AsyncSession:
 
 
 async def init_db():
-    """Initialize database tables (used in dev only)"""
+    """Initialize database tables"""
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)

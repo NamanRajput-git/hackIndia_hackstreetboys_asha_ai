@@ -16,11 +16,14 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     
-    # Gemini API
-    GEMINI_API_URL: str = "http://localhost:8001/generate"
+    # Mistral AI
+    MISTRAL_API_KEY: str = ""
+    MISTRAL_MODEL: str = "mistral-large-latest"
     
     # Whisper STT Settings
-    WHISPER_MODEL: str = "base"  # Options: tiny, base, small, medium, large
+    WHISPER_MODEL: str = "base"      # Options: tiny, base, small, medium, large
+    WHISPER_DEVICE: str = "cpu"      # Options: cpu, cuda (if GPU available)
+    WHISPER_PRELOAD: bool = True     # Pre-load model at startup for fast first request
     
     # App Settings
     DEBUG: bool = True

@@ -28,7 +28,7 @@ from app.core.database import get_db
 from app.core.config import get_settings
 from app.core.security import get_current_user, get_current_user_optional
 from app.apps.users.models import User
-from app.apps.ai.service import gemini_service
+from app.apps.ai.service import mistral_service
 
 router = APIRouter(prefix="/voice", tags=["Voice"])
 
@@ -42,48 +42,68 @@ settings = get_settings()
 
 
 def get_whisper_model():
-    """Get cached Whisper model or load it"""
+    """Get or load the cached Whisper model. Thread-safe via GIL."""
     global _whisper_model
-    
+
     if _whisper_model is None:
         try:
             import whisper
             model_name = settings.WHISPER_MODEL
-            print(f"[Whisper] Loading model: {model_name}")
-            _whisper_model = whisper.load_model(model_name)
-            print(f"[Whisper] Model loaded successfully")
+            device = settings.WHISPER_DEVICE  # 'cpu' or 'cuda'
+            print(f"[Whisper] Loading model '{model_name}' on device '{device}'...")
+            _whisper_model = whisper.load_model(model_name, device=device)
+            print(f"[Whisper] ✅ Model loaded successfully (model={model_name}, device={device})")
         except ImportError:
             raise HTTPException(
                 status_code=503,
-                detail="Whisper is not installed. Run: pip install openai-whisper"
+                detail="Whisper not installed. Run: pip install openai-whisper"
             )
         except Exception as e:
             raise HTTPException(
                 status_code=503,
                 detail=f"Failed to load Whisper model: {str(e)}"
             )
-    
+
     return _whisper_model
 
 
-def convert_audio_to_wav(input_path: str, output_path: str) -> bool:
-    """Convert audio file to WAV format using FFmpeg"""
+def _get_ffmpeg_binary() -> str:
+    """Return path to ffmpeg binary — system PATH first, then imageio-ffmpeg fallback."""
+    # Try system ffmpeg first
+    import shutil
+    sys_ffmpeg = shutil.which("ffmpeg")
+    if sys_ffmpeg:
+        return sys_ffmpeg
+    # Fallback: bundled ffmpeg via imageio-ffmpeg (works on Windows without install)
     try:
+        import imageio_ffmpeg
+        return imageio_ffmpeg.get_ffmpeg_exe()
+    except ImportError:
+        pass
+    return "ffmpeg"  # will fail, but give a meaningful error
+
+
+def convert_audio_to_wav(input_path: str, output_path: str) -> bool:
+    """Convert audio file to WAV 16kHz mono using FFmpeg (system or bundled)."""
+    try:
+        ffmpeg_bin = _get_ffmpeg_binary()
         cmd = [
-            "ffmpeg", "-y",
+            ffmpeg_bin, "-y",
             "-i", input_path,
-            "-ar", "16000",  # 16kHz sample rate (Whisper requirement)
-            "-ac", "1",       # Mono channel
-            "-c:a", "pcm_s16le",  # 16-bit PCM
+            "-ar", "16000",      # 16kHz sample rate (Whisper requirement)
+            "-ac", "1",          # Mono channel
+            "-c:a", "pcm_s16le", # 16-bit PCM
             output_path
         ]
         result = subprocess.run(cmd, capture_output=True, timeout=30)
+        if result.returncode != 0:
+            print(f"[FFmpeg] Conversion failed: {result.stderr.decode(errors='replace')[:200]}")
         return result.returncode == 0
     except subprocess.TimeoutExpired:
         print("[FFmpeg] Conversion timed out")
         return False
     except FileNotFoundError:
-        print("[FFmpeg] FFmpeg not found. Install with: sudo apt install ffmpeg")
+        print("[FFmpeg] FFmpeg not found. Install: winget install ffmpeg  OR  pip install imageio-ffmpeg")
         return False
     except Exception as e:
         print(f"[FFmpeg] Error: {e}")
@@ -210,17 +230,28 @@ async def transcribe_audio(
         
         # Set language if provided
         if language:
+            # Comprehensive map: BCP-47 / short codes → Whisper language names
             lang_map = {
-                'hi': 'Hindi',
-                'en': 'English',
-                'hi-IN': 'Hindi',
-                'en-US': 'English',
+                # Hindi
+                'hi': 'Hindi', 'hi-IN': 'Hindi', 'hindi': 'Hindi',
+                # English
+                'en': 'English', 'en-US': 'English', 'en-IN': 'English', 'english': 'English',
+                # Regional Indian languages (from project spec)
+                'gu': 'Gujarati', 'gu-IN': 'Gujarati',
+                'kn': 'Kannada',  'kn-IN': 'Kannada',
+                'ta': 'Tamil',    'ta-IN': 'Tamil',
+                'te': 'Telugu',   'te-IN': 'Telugu',
+                'ml': 'Malayalam','ml-IN': 'Malayalam',
+                'mr': 'Marathi',  'mr-IN': 'Marathi',
+                'bn': 'Bengali',  'bn-IN': 'Bengali',
+                'pa': 'Punjabi',  'pa-IN': 'Punjabi',
+                # Bhojpuri — Whisper uses Hindi as closest model
+                'bh': 'Hindi',    'bho': 'Hindi',
+                # Urdu
+                'ur': 'Urdu',     'ur-IN': 'Urdu',
             }
-            if language in lang_map:
-                options['language'] = lang_map[language]
-            else:
-                options['language'] = language
-            print(f"[Transcribe] Using language: {options.get('language')}")
+            options['language'] = lang_map.get(language.lower(), language)
+            print(f"[Transcribe] Language '{language}' → Whisper language '{options['language']}'")
         
         # Transcribe
         print("[Transcribe] Starting transcription...")
@@ -268,6 +299,33 @@ async def transcribe_audio(
                     print(f"[Transcribe] Failed to cleanup {temp_file}: {e}")
 
 
+
+# ============================================================================
+# Whisper Health Status Endpoint
+# ============================================================================
+
+@router.get("/whisper-status")
+async def whisper_status():
+    """
+    Check if Whisper model is loaded and ready.
+    Call this after startup to verify local Whisper is working.
+    """
+    global _whisper_model
+    loaded = _whisper_model is not None
+    return {
+        "loaded": loaded,
+        "model": settings.WHISPER_MODEL,
+        "device": settings.WHISPER_DEVICE,
+        "preload_enabled": settings.WHISPER_PRELOAD,
+        "status": "ready" if loaded else "not_loaded",
+        "message": (
+            f"Whisper '{settings.WHISPER_MODEL}' model is loaded on '{settings.WHISPER_DEVICE}' and ready for transcription."
+            if loaded else
+            "Whisper model not yet loaded. It will load on the first /transcribe request."
+        )
+    }
+
+
 # ============================================================================
 # Chat Endpoint
 # ============================================================================
@@ -297,7 +355,7 @@ async def chat_with_asha_didi(
     
     try:
         # Get AI response
-        result = await gemini_service.chat_with_asha_didi(
+        result = await mistral_service.chat_with_asha_didi(
             user_message=request.message,
             conversation_history=request.conversation_history,
             language=request.language
@@ -356,7 +414,7 @@ async def process_voice(
     
     # Extract structured data
     try:
-        extracted_data = await gemini_service.extract_visit_data(result_transcription)
+        extracted_data = await mistral_service.extract_visit_data(result_transcription)
     except Exception as e:
         print(f"[Process] Extraction error: {e}")
         extracted_data = {}

@@ -1,9 +1,12 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
+from sqlalchemy import select
 
 from app.core.config import get_settings
-from app.core.database import engine
+from app.core.database import engine, async_session_maker, init_db
+from app.core.security import get_password_hash
+from app.apps.users.models import User
 
 # Import all routers
 from app.apps.users.router import router as auth_router
@@ -21,11 +24,66 @@ from app.apps.voice.router import router as voice_router
 settings = get_settings()
 
 
+# ── Test user credentials (only used in DEBUG mode) ──────────
+TEST_BENEFICIARY_EMAIL = "test@asha.ai"
+TEST_BENEFICIARY_PASSWORD = "test123456"
+
+
+async def seed_test_beneficiary():
+    """Create a hardcoded test beneficiary user if it doesn't exist (DEBUG only)."""
+    async with async_session_maker() as session:
+        result = await session.execute(
+            select(User).where(User.email == TEST_BENEFICIARY_EMAIL)
+        )
+        if result.scalar_one_or_none():
+            print(f"✅ Test beneficiary already exists: {TEST_BENEFICIARY_EMAIL}")
+            return
+
+        user = User(
+            email=TEST_BENEFICIARY_EMAIL,
+            password_hash=get_password_hash(TEST_BENEFICIARY_PASSWORD),
+            full_name="Test Beneficiary",
+            role="beneficiary",
+            phone_number="9999999999",
+            language="hi",
+        )
+        session.add(user)
+        await session.commit()
+        print(f"✅ Created test beneficiary — email: {TEST_BENEFICIARY_EMAIL}  password: {TEST_BENEFICIARY_PASSWORD}")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan handler"""
     # Startup
     print("🚀 ASHA AI Backend Starting...")
+
+    # 1. Initialize database (create tables if they don't exist)
+    try:
+        print("💾 Initializing database...")
+        await init_db()
+        print("✅ Database initialized!")
+    except Exception as e:
+        print(f"❌ Database initialization failed: {e}")
+
+    # 2. Pre-load Whisper model at startup to avoid slow first request
+    if settings.WHISPER_PRELOAD:
+        try:
+            from app.apps.voice.router import get_whisper_model
+            from fastapi.concurrency import run_in_threadpool
+            print(f"🎙️  Pre-loading Whisper model: '{settings.WHISPER_MODEL}' on device: '{settings.WHISPER_DEVICE}'...")
+            await run_in_threadpool(get_whisper_model)
+            print("✅ Whisper model loaded and ready!")
+        except Exception as e:
+            print(f"⚠️  Whisper pre-load failed (will retry on first request): {e}")
+
+    # 3. Seed test beneficiary in dev mode
+    if settings.DEBUG:
+        try:
+            await seed_test_beneficiary()
+        except Exception as e:
+            print(f"⚠️  Could not seed test user: {e}")
+
     yield
     # Shutdown
     print("👋 ASHA AI Backend Shutting Down...")

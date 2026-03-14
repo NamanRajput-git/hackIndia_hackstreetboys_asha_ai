@@ -13,7 +13,7 @@ from app.apps.ai.schemas import (
     NutritionPlanRequest,
     NutritionPlanResponse
 )
-from app.apps.ai.service import gemini_service
+from app.apps.ai.service import mistral_service
 
 router = APIRouter(prefix="/ai", tags=["AI"])
 
@@ -23,8 +23,8 @@ async def generate_response(
     request: PromptRequest,
     current_user: User = Depends(get_current_user)
 ):
-    """Generate AI response using Gemini API"""
-    return await gemini_service.generate(request.text)
+    """Generate AI response using Mistral API"""
+    return await mistral_service.generate(request.text)
 
 
 @router.post("/analyze-voice", response_model=RiskAssessment)
@@ -35,10 +35,10 @@ async def analyze_voice_transcript(
 ):
     """Analyze voice transcript and extract medical data with risk assessment"""
     # Extract medical data
-    extracted = await gemini_service.extract_medical_data(request.transcript)
+    extracted = await mistral_service.extract_medical_data(request.transcript)
     
     # Assess risk
-    risk_assessment = await gemini_service.assess_risk(extracted)
+    risk_assessment = await mistral_service.assess_risk(extracted)
     
     # If critical risk and beneficiary_id provided, we could auto-trigger SOS
     # (This would be handled by the frontend based on should_trigger_sos)
@@ -52,7 +52,7 @@ async def get_health_guidance(
     current_user: User = Depends(get_current_user)
 ):
     """Get AI health guidance for a query"""
-    guidance = await gemini_service.get_health_guidance(
+    guidance = await mistral_service.get_health_guidance(
         request.query, 
         request.language
     )
@@ -65,7 +65,7 @@ async def generate_nutrition_plan(
     current_user: User = Depends(get_current_user)
 ):
     """Generate personalized nutrition plan"""
-    plan = await gemini_service.generate_nutrition_plan(
+    plan = await mistral_service.generate_nutrition_plan(
         user_type=request.user_type,
         age=request.age,
         anemia_status=request.anemia_status,
@@ -93,7 +93,7 @@ async def extract_visit_data(
     """
     try:
         # Use the improved extraction method from the service
-        result = await gemini_service.extract_visit_data(request.text)
+        result = await mistral_service.extract_visit_data(request.text)
         
         if not result:
             # Return empty structure if extraction failed
@@ -138,10 +138,10 @@ async def health_check():
     """Check if AI service is healthy"""
     try:
         # Try a simple call to check connectivity
-        response = await gemini_service.generate("Hello")
+        response = await mistral_service.generate("Hello")
         return {
             "status": "healthy" if response.success else "degraded",
-            "gemini_api": response.success
+            "mistral_api": response.success
         }
     except Exception as e:
         return {

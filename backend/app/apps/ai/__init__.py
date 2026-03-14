@@ -1,4 +1,4 @@
-# AI app module - integrates with Gemini API
+# AI app module - integrates with Mistral AI API
 from app.apps.ai.schemas import (
     PromptRequest,
     AIResponse,
