@@ -255,11 +255,7 @@ netlify deploy --prod
 
 This project was built with ❤️ by:
 
-- **Prakhar Singh** - [GitHub](https://github.com/masoomprakhar)
-- **Prateek Srivastava** - [GitHub](https://github.com/prateek-workspace)
-- **Lakshya Barnwal** - [GitHub](https://github.com/lakshya-baranwal)
-- **Pushkar Singh** - [GitHub](https://github.com/Elon7069)
-
+-HackStreet-Boys
 ---
 
 ## 🤝 Contributing
